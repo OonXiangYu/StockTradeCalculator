@@ -1,35 +1,29 @@
-from PyQt6.QtWidgets import QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout
 import sys
+from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox, QPushButton
 
-class StockTradeCalculator(QWidget):
+class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
 
-        # Define the purchase date
-        purchaseDate = "2024-10-15"  # Replace with actual data
+        # Set up a button to trigger the error message
+        self.button = QPushButton("Trigger Error", self)
+        self.button.clicked.connect(self.show_error_message)
+        self.setCentralWidget(self.button)
 
-        # Main layout
-        layout = QVBoxLayout(self)
+    def show_error_message(self):
+        # Pop up an error message
+        error_dialog = QMessageBox()
+        error_dialog.setIcon(QMessageBox.Icon.Critical)
+        error_dialog.setText("An error occurred!")
+        error_dialog.setInformativeText("Please check the input and try again.")
+        error_dialog.setWindowTitle("Error")
+        error_dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
+        error_dialog.exec()
 
-        # Sub layout for the purchase date
-        sub1_layout = QHBoxLayout()
-
-        # Create labels
-        self.purchase_date_label = QLabel("Select Purchase Date:")
-        self.purchase_date = QLabel(f'{purchaseDate}')
-
-        # Add the labels to the horizontal sub-layout
-        sub1_layout.addWidget(self.purchase_date_label)
-        sub1_layout.addWidget(self.purchase_date)
-
-        # Add the sub-layout to the main layout
-        layout.addLayout(sub1_layout)
-
-        # Set the layout to the window
-        self.setLayout(layout)
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    window = StockTradeCalculator()
+if __name__ == "__main__":
+    app = QApplication([])
+    window = MainWindow()
     window.show()
+    app.exec()
+
     sys.exit(app.exec())
