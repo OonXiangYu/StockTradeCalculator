@@ -1,5 +1,7 @@
 import sys
 import csv
+
+from PyQt6.QtWidgets import QHBoxLayout
 from PyQt6.QtCore import QDate
 from PyQt6.QtWidgets import QLabel, QComboBox, QCalendarWidget, QDialog, QApplication, QGridLayout, QSpinBox, \
     QVBoxLayout
@@ -30,7 +32,11 @@ class StockTradeProfitCalculator(QDialog):
         self.data = self.make_data()
 
         # Initialize the layout
-        layout = QVBoxLayout()
+        layout = QVBoxLayout(self)
+
+        # TODO: Define buyCalendarDefaultDate
+        purchaseDate = QDate.currentDate().toString('dd-MM-yyyy')
+        sellDate = QDate.currentDate().toString('dd-MM-yyyy')
 
         # TODO: create QLabel for Stock selection
         # Stock selection label
@@ -57,18 +63,30 @@ class StockTradeProfitCalculator(QDialog):
 
         # TODO: create CalendarWidgets for selection of purchase and sell dates
         # Purchase date selection
+        sub1_layout = QHBoxLayout()
         self.purchase_date_label = QLabel("Select Purchase Date:")
-        layout.addWidget(self.purchase_date_label)
+        self.purchase_date = QLabel(f'{purchaseDate}')
+        sub1_layout.addWidget(self.purchase_date_label)
+        sub1_layout.addWidget(self.purchase_date)
+        sub1_layout.addStretch(1)
+        layout.addLayout(sub1_layout)
 
         self.purchase_calendar = QCalendarWidget()
         layout.addWidget(self.purchase_calendar)
+        self.purchase_calendar.clicked.connect(self.updateUi)
 
         # Sell date selection
+        sub2_layout = QHBoxLayout()
         self.sell_date_label = QLabel("Select Sell Date:")
-        layout.addWidget(self.sell_date_label)
+        self.sell_date = QLabel(f'{sellDate}')
+        sub2_layout.addWidget(self.sell_date_label)
+        sub2_layout.addWidget(self.sell_date)
+        sub2_layout.addStretch(1)
+        layout.addLayout(sub2_layout)
 
         self.sell_calendar = QCalendarWidget()
         layout.addWidget(self.sell_calendar)
+        self.sell_calendar.clicked.connect(self.updateUi)
 
         # TODO: create QLabels to show the Stock purchase total
         self.stock_purchase_total = QLabel("Purchase Total :$")
@@ -93,8 +111,6 @@ class StockTradeProfitCalculator(QDialog):
             print("Amazon not found in the dataset. Available stocks:", self.data.keys())
             self.sellCalendarDefaultDate = QDate.currentDate()  # Default to the current date
 
-        # TODO: Define buyCalendarDefaultDate
-
         # TODO: initialize the layout - 6 rows to start
 
         # TODO: set the calendar values
@@ -113,6 +129,15 @@ class StockTradeProfitCalculator(QDialog):
         '''
         try:
             # TODO: get selected dates from calendars
+            #render new label for purchase date
+            selected_purchase_date = self.purchase_calendar.selectedDate()
+            selected_purchase_date_str = selected_purchase_date.toString('dd-MM-yyyy')
+            self.purchase_date.setText(f'{selected_purchase_date_str}')
+
+            # render new label for sell date
+            selected_sell_date = self.sell_calendar.selectedDate()
+            selected_sell_date_str = selected_sell_date.toString('dd-MM-yyyy')
+            self.sell_date.setText(f'{selected_sell_date_str}')
 
             # TODO: perform necessary calculations to calculate totals
 
