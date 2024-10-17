@@ -106,18 +106,19 @@ class StockTradeProfitCalculator(QDialog):
         layout.addWidget(self.sell_calendar)
 
         # TODO: create QLabels to show the Stock purchase total
-        self.stock_purchase_total = QLabel(f'Purchase Total :$ {self.purchase_total_price}')
+        self.stock_purchase_total = QLabel(f"Purchase Total: $ {self.purchase_total_price:.2f}")
         layout.addWidget(self.stock_purchase_total)
 
         # TODO: create QLabels to show the Stock sell total
-        self.stock_sell_total = QLabel(f'Sell Total :${self.purchase_total_price}')
+        self.stock_sell_total = QLabel(f"Sell Total :${self.sell_total_price:.2f}")
         layout.addWidget(self.stock_sell_total)
 
         # TODO: create QLabels to show the Stock profit total
-        self.stock_profit_total = QLabel(f'Profit :${self.total_profit}')
+        self.stock_profit_total = QLabel(f"Profit :${self.total_profit:.2f}")
         layout.addWidget(self.stock_profit_total)
 
         # TODO: set the window title
+
         self.setLayout(layout)
         self.setWindowTitle('Stock Trade Profit Calculator')
         self.show()
@@ -206,7 +207,7 @@ class StockTradeProfitCalculator(QDialog):
             self.show_error_message()
             self.error_index += 1
 
-        if self.error_index > 0:
+        if self.error_index > 1:
             self.active = False
         else:
             self.active = True
@@ -255,7 +256,7 @@ class StockTradeProfitCalculator(QDialog):
             if '-' in date_string:
                 date_obj = datetime.strptime(date_string, "%d-%m-%Y")
             else:
-                date_obj = datetime.strptime(date_string, "%m/%d/%Y")
+                date_obj = datetime.strptime(date_string, "%d/%m/%Y")
             return date_obj.year, date_obj.month, date_obj.day
         except ValueError:
             print(f"Error parsing date: {date_string}")
