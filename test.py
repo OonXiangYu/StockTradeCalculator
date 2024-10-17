@@ -1,29 +1,33 @@
-import sys
-from PyQt6.QtWidgets import QApplication, QMainWindow, QMessageBox, QPushButton
+from PyQt6.QtCore import QDate
 
-class MainWindow(QMainWindow):
-    def __init__(self):
-        super().__init__()
 
-        # Set up a button to trigger the error message
-        self.button = QPushButton("Trigger Error", self)
-        self.button.clicked.connect(self.show_error_message)
-        self.setCentralWidget(self.button)
+class MyClass:
+    def get_first_stock_date(self):
+        if self.stock_name in self.data:
+            # The keys are tuples, so no need to parse them
+            # Sort the tuples directly
+            date_keys = sorted(self.data[self.stock_name].keys())
 
-    def show_error_message(self):
-        # Pop up an error message
-        error_dialog = QMessageBox()
-        error_dialog.setIcon(QMessageBox.Icon.Critical)
-        error_dialog.setText("An error occurred!")
-        error_dialog.setInformativeText("Please check the input and try again.")
-        error_dialog.setWindowTitle("Error")
-        error_dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
-        error_dialog.exec()
+            # Get the first (earliest) date tuple
+            first_date = date_keys[0]
 
-if __name__ == "__main__":
-    app = QApplication([])
-    window = MainWindow()
-    window.show()
-    app.exec()
+            # Unpack the tuple (year, month, day) and convert it to QDate
+            self.sellDefaultDate = QDate(first_date[0], first_date[1], first_date[2])
 
-    sys.exit(app.exec())
+            print(f'{self.sellDefaultDate.toString("yyyy-MM-dd")}')
+        else:
+            print("Current stock not found in the dataset. Available stocks:", self.data.keys())
+            self.sellDefaultDate = QDate.currentDate()  # Default to the current date
+
+
+# Example usage
+my_instance = MyClass()
+my_instance.data = {
+    'Amazon': {
+        (2024, 5, 1): {},
+        (2022, 1, 15): {},
+        (2023, 7, 10): {}
+    }
+}
+my_instance.stock_name = 'Amazon'
+my_instance.get_first_stock_date()
