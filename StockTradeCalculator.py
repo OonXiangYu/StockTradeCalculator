@@ -2,7 +2,8 @@ import sys
 import csv
 
 from PyQt6.QtCore import QDate
-from PyQt6.QtWidgets import QLabel, QComboBox, QCalendarWidget, QDialog, QApplication, QGridLayout, QSpinBox, QVBoxLayout, QHBoxLayout, QMessageBox
+from PyQt6.QtWidgets import QLabel, QComboBox, QCalendarWidget, QDialog, QApplication, QGridLayout, QSpinBox, \
+    QVBoxLayout, QHBoxLayout, QMessageBox, QPushButton
 from datetime import datetime
 
 
@@ -32,7 +33,7 @@ class StockTradeProfitCalculator(QDialog):
         # Initialize the layout
         layout = QVBoxLayout(self)
 
-        #assign variable
+        # Assign variable
         self.purchase_total_price = 0
         self.sell_total_price = 0
         self.total_profit = 0
@@ -76,6 +77,10 @@ class StockTradeProfitCalculator(QDialog):
         self.quantity_spinbox.setMaximum(100)
         layout.addWidget(self.quantity_spinbox)
 
+        #  status of data browse
+        self.purchase_date_status = QLabel()
+        layout.addWidget(self.purchase_date_status)
+
         # TODO: create CalendarWidgets for selection of purchase and sell dates
         # Purchase date selection
         sub1_layout = QHBoxLayout()
@@ -90,6 +95,10 @@ class StockTradeProfitCalculator(QDialog):
         self.purchase_calendar = QCalendarWidget()
         self.purchase_calendar.setSelectedDate(self.purchaseDate)
         layout.addWidget(self.purchase_calendar)
+
+        # status of data browse
+        self.sell_date_status = QLabel()
+        layout.addWidget(self.sell_date_status)
 
         # Sell date selection
         sub2_layout = QHBoxLayout()
@@ -117,19 +126,37 @@ class StockTradeProfitCalculator(QDialog):
         self.stock_profit_total = QLabel(f"Profit :${self.total_profit:.2f}")
         layout.addWidget(self.stock_profit_total)
 
-        # TODO: set the window title
+        # A button to confirm your selection
+        self.confirm_button = QPushButton("Calculate")
+        layout.addWidget(self.confirm_button)
 
+        # TODO: connecting signals to slots so that a change in one control updates the UI
+        self.confirm_button.clicked.connect(self.updateUi)
+        self.confirm_button.clicked.connect(self.updateCalendarUi)
+        self.purchase_calendar.clicked.connect(self.updateCalendarUi)
+
+        # TODO: set the window title
         self.setLayout(layout)
         self.setWindowTitle('Stock Trade Profit Calculator')
         self.show()
 
         # TODO: initialize the layout - 6 rows to start
 
-        # TODO: connecting signals to slots so that a change in one control updates the UI
-        self.quantity_spinbox.valueChanged.connect(self.updateUi)
-        self.stock_combobox.currentTextChanged.connect(self.updateUi)
-        self.purchase_calendar.clicked.connect(self.updateUi)
-        self.sell_calendar.clicked.connect(self.updateUi)
+    def updateCalendarUi(self):
+        # TODO: get selected dates from calendars
+        self.selected_purchase_date = self.purchase_calendar.selectedDate()
+        self.selected_sell_date = self.sell_calendar.selectedDate()
+
+        # validation for sale date cannot earlier than purchase date
+        if self.selected_sell_date <= self.selected_purchase_date:  # if error occur
+            self.error_msg = "The sell date cannot earlier than purchase date"
+            self.show_error_message()
+
+        else:
+            self.get_price()
+            self.purchaseDate = self.selected_purchase_date
+            self.sellDate = self.selected_sell_date
+
 
     def updateUi(self): # TODO: update the UI
         '''
@@ -137,22 +164,6 @@ class StockTradeProfitCalculator(QDialog):
         Updates the UI when control values are changed; should also be called when the app initializes.
         '''
         try:
-            # TODO: get selected dates from calendars
-            self.selected_purchase_date = self.purchase_calendar.selectedDate()
-            self.selected_sell_date = self.sell_calendar.selectedDate()
-
-            #validation for sale date cannot earlier than purchase date
-            if self.selected_sell_date <= self.selected_purchase_date: #if error occur
-                self.error_msg = "The sell date cannot earlier than purchase date"
-                self.show_error_message()
-
-            else:
-                self.get_price()
-
-            if self.active:
-                self.purchaseDate = self.selected_purchase_date
-                self.sellDate = self.selected_sell_date
-
             # render new label for purchase date, sell date and both calendar
             self.purchase_date.setText(f"{self.purchaseDate.toString('dd-MM-yyyy')}")
             self.sell_date.setText(f"{self.sellDate.toString('dd-MM-yyyy')}")
@@ -186,7 +197,6 @@ class StockTradeProfitCalculator(QDialog):
     def get_price(self):
         # setting up dictionary of Stocks and format the date
         data = self.make_data()
-        self.error_index = 0
         self.stock_name = self.stock_combobox.currentText()
         purchaseDateTuple = self.string_date_into_tuple(self.selected_purchase_date.toString('dd-MM-yyyy'))
         sellDateTuple = self.string_date_into_tuple(self.selected_sell_date.toString('dd-MM-yyyy'))
@@ -194,23 +204,21 @@ class StockTradeProfitCalculator(QDialog):
         # Retrieve the stock price for the purchase date
         if self.stock_name in data and purchaseDateTuple in data[self.stock_name]:
             self.stock_buy_price = data[self.stock_name][purchaseDateTuple]
+            self.purchase_date_status.setText("Data found")
+            self.purchase_date_status.setStyleSheet("QLabel { color : green; }")
         else:
-            self.error_msg = (f"No data found for {self.stock_name} on {self.selected_purchase_date.toString('dd-MM-yyyy')}") # to recover if no data found
-            self.show_error_message()
-            self.error_index += 1
+            self.purchase_date_status.setText("No data found")
+            self.purchase_date_status.setStyleSheet("QLabel { color : red; }")
 
         # Retrieve the stock price for the sell date
         if self.stock_name in data and sellDateTuple in data[self.stock_name]:
             self.stock_sell_price = data[self.stock_name][sellDateTuple]
+            self.sell_date_status.setText("Data found")
+            self.sell_date_status.setStyleSheet("QLabel { color : green; }")
         else:
-            self.error_msg = (f"No data found for {self.stock_name} on {self.selected_sell_date.toString('dd-MM-yyyy')}") # to recover if no data found
-            self.show_error_message()
-            self.error_index += 1
+            self.sell_date_status.setText("No data found")
+            self.sell_date_status.setStyleSheet("QLabel { color : red; }")
 
-        if self.error_index > 1:
-            self.active = False
-        else:
-            self.active = True
 
     def make_data(self):
         '''
