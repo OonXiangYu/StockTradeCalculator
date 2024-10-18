@@ -130,10 +130,13 @@ class StockTradeProfitCalculator(QDialog):
         self.confirm_button = QPushButton("Calculate")
         layout.addWidget(self.confirm_button)
 
+        # Initialize the UI
+        self.updateCalendarUi()
+
         # TODO: connecting signals to slots so that a change in one control updates the UI
         self.confirm_button.clicked.connect(self.updateUi)
-        self.confirm_button.clicked.connect(self.updateCalendarUi)
         self.purchase_calendar.clicked.connect(self.updateCalendarUi)
+        self.sell_calendar.clicked.connect(self.updateCalendarUi)
 
         # TODO: set the window title
         self.setLayout(layout)
@@ -151,11 +154,19 @@ class StockTradeProfitCalculator(QDialog):
         if self.selected_sell_date <= self.selected_purchase_date:  # if error occur
             self.error_msg = "The sell date cannot earlier than purchase date"
             self.show_error_message()
+            self.purchase_calendar.setSelectedDate(self.purchaseDate) # to recover the calendar
+            self.sell_calendar.setSelectedDate(self.sellDate)
 
         else:
             self.get_price()
             self.purchaseDate = self.selected_purchase_date
             self.sellDate = self.selected_sell_date
+
+            # render new label for purchase date, sell date and both calendar
+            self.purchase_date.setText(f"{self.purchaseDate.toString('dd-MM-yyyy')}")
+            self.sell_date.setText(f"{self.sellDate.toString('dd-MM-yyyy')}")
+            self.purchase_calendar.setSelectedDate(self.purchaseDate)
+            self.sell_calendar.setSelectedDate(self.sellDate)
 
 
     def updateUi(self): # TODO: update the UI
@@ -164,11 +175,7 @@ class StockTradeProfitCalculator(QDialog):
         Updates the UI when control values are changed; should also be called when the app initializes.
         '''
         try:
-            # render new label for purchase date, sell date and both calendar
-            self.purchase_date.setText(f"{self.purchaseDate.toString('dd-MM-yyyy')}")
-            self.sell_date.setText(f"{self.sellDate.toString('dd-MM-yyyy')}")
-            self.purchase_calendar.setSelectedDate(self.purchaseDate)
-            self.sell_calendar.setSelectedDate(self.sellDate)
+            self.get_price()
 
             # TODO: perform necessary calculations to calculate totals
             self.purchase_total_price = self.stock_buy_price  * self.quantity_spinbox.value() # purchase total price
@@ -176,9 +183,9 @@ class StockTradeProfitCalculator(QDialog):
             self.total_profit = self.purchase_total_price - self.sell_total_price #total profit
 
             # TODO: update the label displaying totals
-            self.stock_purchase_total.setText(f'Purchase Total :$ {self.purchase_total_price}') #render label of purchase total
-            self.stock_sell_total.setText(f'Sell Total :$ {self.sell_total_price}')  # render label of sell total
-            self.stock_profit_total.setText(f'Profit :${self.total_profit}') # render label of total profit
+            self.stock_purchase_total.setText(f"Purchase Total: $ {self.purchase_total_price:.2f}") #render label of purchase total
+            self.stock_sell_total.setText(f"Sell Total :${self.sell_total_price:.2f}")  # render label of sell total
+            self.stock_profit_total.setText(f"Profit :${self.total_profit:.2f}") # render label of total profit
 
             pass  # placeholder for future code
         except Exception as e:
