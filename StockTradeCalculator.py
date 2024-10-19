@@ -2,10 +2,39 @@ import sys
 import csv
 
 from PyQt6.QtCore import QDate
-from PyQt6.QtWidgets import QLabel, QComboBox, QCalendarWidget, QDialog, QApplication, QGridLayout, QSpinBox, \
-    QVBoxLayout, QHBoxLayout, QMessageBox, QPushButton
+from PyQt6.QtWidgets import QLabel, QComboBox, QCalendarWidget, QDialog, QApplication, QSpinBox, QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QMessageBox, QPushButton
 from datetime import datetime
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
 
+# Create a simple Matplotlib canvas class
+class MatplotlibCanvas(FigureCanvas):
+    def __init__(self, parent=None):
+        fig = Figure()
+        self.axes = fig.add_subplot(111)
+        super().__init__(fig)
+        self.setParent(parent)
+
+    def plot_bar_chart(self, categories, values):
+        self.axes.clear()  # Clear previous plot
+        self.axes.bar(categories, values)  # Plot with floating-point values
+        self.draw()
+
+class GraphWindow(QMainWindow):
+    def __init__(self, categories, values):
+        super().__init__()
+        self.setWindowTitle("Bar Chart with Double Values")
+        self.setGeometry(200, 200, 600, 400)
+
+        central_widget = QWidget(self)
+        self.setCentralWidget(central_widget)
+
+        layout = QVBoxLayout(central_widget)
+        self.canvas = MatplotlibCanvas(self)
+        layout.addWidget(self.canvas)
+
+        # Plot the bar chart
+        self.canvas.plot_bar_chart(categories, values)
 
 class StockTradeProfitCalculator(QDialog):
     '''
@@ -135,6 +164,7 @@ class StockTradeProfitCalculator(QDialog):
 
         # TODO: connecting signals to slots so that a change in one control updates the UI
         self.confirm_button.clicked.connect(self.updateUi)
+        self.confirm_button.clicked.connect(self.show_graph)
         self.purchase_calendar.clicked.connect(self.updateCalendarUi)
         self.sell_calendar.clicked.connect(self.updateCalendarUi)
 
@@ -180,7 +210,7 @@ class StockTradeProfitCalculator(QDialog):
             # TODO: perform necessary calculations to calculate totals
             self.purchase_total_price = self.stock_buy_price  * self.quantity_spinbox.value() # purchase total price
             self.sell_total_price = self.stock_sell_price * self.quantity_spinbox.value() # sell total price
-            self.total_profit = self.purchase_total_price - self.sell_total_price #total profit
+            self.total_profit = self.sell_total_price - self.purchase_total_price #total profit
 
             # TODO: update the label displaying totals
             self.stock_purchase_total.setText(f"Purchase Total: $ {self.purchase_total_price:.2f}") #render label of purchase total
@@ -201,6 +231,13 @@ class StockTradeProfitCalculator(QDialog):
         error_dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
         error_dialog.exec()
 
+    def show_graph(self):
+        # Create and show the graph window
+        self.categories = self.stock_name
+        self.values = self.total_profit
+        self.graph_window = GraphWindow(self.categories, self.values)
+        self.graph_window.show()
+
     def get_price(self):
         # setting up dictionary of Stocks and format the date
         data = self.make_data()
@@ -214,6 +251,7 @@ class StockTradeProfitCalculator(QDialog):
             self.purchase_date_status.setText("Data found")
             self.purchase_date_status.setStyleSheet("QLabel { color : green; }")
         else:
+            self.stock_buy_price = 0
             self.purchase_date_status.setText("No data found")
             self.purchase_date_status.setStyleSheet("QLabel { color : red; }")
 
@@ -223,6 +261,7 @@ class StockTradeProfitCalculator(QDialog):
             self.sell_date_status.setText("Data found")
             self.sell_date_status.setStyleSheet("QLabel { color : green; }")
         else:
+            self.stock_sell_price = 0
             self.sell_date_status.setText("No data found")
             self.sell_date_status.setStyleSheet("QLabel { color : red; }")
 
@@ -280,6 +319,7 @@ class StockTradeProfitCalculator(QDialog):
 def main():
     app = QApplication(sys.argv)
     stock_calculator = StockTradeProfitCalculator()
+    stock_calculator.show()
     sys.exit(app.exec())
 # This is complete
 if __name__ == '__main__':
