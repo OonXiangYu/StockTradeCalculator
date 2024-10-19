@@ -2,7 +2,7 @@ import sys
 import csv
 
 from PyQt6.QtCore import QDate
-from PyQt6.QtWidgets import QLabel, QComboBox, QCalendarWidget, QDialog, QApplication, QSpinBox, QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QMessageBox, QPushButton
+from PyQt6.QtWidgets import QLabel, QComboBox, QCalendarWidget, QDialog, QApplication, QSpinBox, QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QMessageBox, QPushButton, QCheckBox
 from datetime import datetime
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
@@ -15,26 +15,86 @@ class MatplotlibCanvas(FigureCanvas):
         super().__init__(fig)
         self.setParent(parent)
 
-    def plot_bar_chart(self, categories, values):
+    def plot_bar_chart(self, categories, profits, bg_colour='black'):
         self.axes.clear()  # Clear previous plot
-        self.axes.bar(categories, values)  # Plot with floating-point values
+        self.axes.set_facecolor(bg_colour)  # Set background color
+        self.axes.bar(categories, profits)
+        self.axes.set_xlabel('Categories')
+        self.axes.set_ylabel('Values')
+        self.axes.tick_params(axis='x', labelsize=6)
         self.draw()
 
 class GraphWindow(QMainWindow):
-    def __init__(self, categories, values):
+    def __init__(self, categories, values, stock_name_parameter, purchase_date_parameter, sell_date_parameter, quantity,bg_colour='black'):
         super().__init__()
         self.setWindowTitle("Bar Chart with Double Values")
         self.setGeometry(200, 200, 600, 400)
 
+        # Setting up dictionary of Stocks
+        self.data_getter = StockDataReader()
+        self.data = self.data_getter.make_data()
+
+        # Assign variable
+        self.stock_name = stock_name_parameter
+        self.purchase_date = purchase_date_parameter
+        self.sell_date = sell_date_parameter
+        self.amount = quantity
+        self.category_profit = {}  # Dictionary to hold category and profit pairs
+        self.category_profit[self.stock_name] = self.get_price(categories, values)
+
+        # Layout of graph
         central_widget = QWidget(self)
         self.setCentralWidget(central_widget)
 
         layout = QVBoxLayout(central_widget)
+
+        checkboxes_layout = QHBoxLayout()
+
+        for stock_name in self.data.keys():
+            if stock_name != self.stock_name:
+                checkbox = QCheckBox(stock_name, self)
+                checkboxes_layout.addWidget(checkbox)  # Add the checkbox to the layout
+                checkbox.stateChanged.connect(self.checkBox_state_changed) # Connect to event
+
+        layout.addLayout(checkboxes_layout)
+
         self.canvas = MatplotlibCanvas(self)
         layout.addWidget(self.canvas)
 
         # Plot the bar chart
-        self.canvas.plot_bar_chart(categories, values)
+        self.update_plot()
+
+    def checkBox_state_changed(self):
+        sender = self.sender()  # Get the checkbox that triggered the event
+        category = sender.text()
+
+        if sender.isChecked():
+            self.category_profit[category] = self.get_price(category, self.amount)
+            self.update_plot() # Update chart
+        else:
+            # Remove the category if the checkbox is unchecked
+            if category in self.category_profit:
+                del self.category_profit[category]  # Remove the category and its profit
+                self.update_plot() # Update chart
+
+    def get_price(self, stock, quantity):
+        # setting up dictionary of Stocks and format the date
+        self.data_reader = StockDataReader()
+        data = self.data_reader.make_data()
+        purchaseDateTuple = self.data_reader.string_date_into_tuple(self.purchase_date.toString('dd-MM-yyyy'))
+        sellDateTuple = self.data_reader.string_date_into_tuple(self.sell_date.toString('dd-MM-yyyy'))
+        self.stock_buy_price = data[stock][purchaseDateTuple]
+        self.stock_sell_price = data[stock][sellDateTuple]
+        total =  self.stock_sell_price * quantity - self.stock_buy_price * quantity
+        return total
+
+    def update_plot(self):
+        categories = list(self.category_profit.keys())
+        profits = list(self.category_profit.values())
+
+        # Call the plot_bar_chart method in the Canvas class
+        self.canvas.plot_bar_chart(categories, profits, bg_colour='black')
+
 
 class StockTradeProfitCalculator(QDialog):
     '''
@@ -57,7 +117,8 @@ class StockTradeProfitCalculator(QDialog):
         super().__init__()
 
         # setting up dictionary of Stocks
-        self.data = self.make_data()
+        self.data_reader = StockDataReader()
+        self.data = self.data_reader.make_data()
 
         # Initialize the layout
         layout = QVBoxLayout(self)
@@ -68,6 +129,8 @@ class StockTradeProfitCalculator(QDialog):
         self.total_profit = 0
         self.stock_buy_price = 0
         self.stock_sell_price = 0
+        self.purchase_active = False
+        self.sell_active = False
 
         # TODO: create QLabel for Stock selection
         # Stock selection label
@@ -86,6 +149,7 @@ class StockTradeProfitCalculator(QDialog):
         self.sellDate = QDate.currentDate()
 
         # Check if current stock exists, if not, handle it gracefully
+        '''
         if self.stock_name in self.data:
             self.sellDefaultDate = sorted(self.data[self.stock_name].keys())[0]
             #self.sellDate = QDate(year, month, day)
@@ -93,6 +157,7 @@ class StockTradeProfitCalculator(QDialog):
         else:
             print("Current stock not found in the dataset. Available stocks:", self.data.keys())
             self.sellDefaultDate = QDate.currentDate()  # Default to the current date
+        '''
 
         # TODO: create QLabel for Quantity selection
         # Quantity selection label
@@ -164,7 +229,6 @@ class StockTradeProfitCalculator(QDialog):
 
         # TODO: connecting signals to slots so that a change in one control updates the UI
         self.confirm_button.clicked.connect(self.updateUi)
-        self.confirm_button.clicked.connect(self.show_graph)
         self.purchase_calendar.clicked.connect(self.updateCalendarUi)
         self.sell_calendar.clicked.connect(self.updateCalendarUi)
 
@@ -205,17 +269,30 @@ class StockTradeProfitCalculator(QDialog):
         Updates the UI when control values are changed; should also be called when the app initializes.
         '''
         try:
-            self.get_price()
+            if self.quantity_spinbox.value() == 0:
+                self.error_msg = "Stock quantity must greater than 0"
+                self.show_error_message()
 
-            # TODO: perform necessary calculations to calculate totals
-            self.purchase_total_price = self.stock_buy_price  * self.quantity_spinbox.value() # purchase total price
-            self.sell_total_price = self.stock_sell_price * self.quantity_spinbox.value() # sell total price
-            self.total_profit = self.sell_total_price - self.purchase_total_price #total profit
+            elif self.purchase_active and self.sell_active:
+                self.get_price()
 
-            # TODO: update the label displaying totals
-            self.stock_purchase_total.setText(f"Purchase Total: $ {self.purchase_total_price:.2f}") #render label of purchase total
-            self.stock_sell_total.setText(f"Sell Total :${self.sell_total_price:.2f}")  # render label of sell total
-            self.stock_profit_total.setText(f"Profit :${self.total_profit:.2f}") # render label of total profit
+                # TODO: perform necessary calculations to calculate totals
+                self.purchase_total_price = self.stock_buy_price  * self.quantity_spinbox.value() # purchase total price
+                self.sell_total_price = self.stock_sell_price * self.quantity_spinbox.value() # sell total price
+                self.total_profit = self.sell_total_price - self.purchase_total_price #total profit
+
+                # TODO: update the label displaying totals
+                self.stock_purchase_total.setText(f"Purchase Total: $ {self.purchase_total_price:.2f}") #render label of purchase total
+                self.stock_sell_total.setText(f"Sell Total :${self.sell_total_price:.2f}")  # render label of sell total
+                self.stock_profit_total.setText(f"Profit :${self.total_profit:.2f}") # render label of total profit
+
+                self.show_graph()
+
+            else:
+                self.error_msg = "Please select a date that contain data"
+                self.show_error_message()
+                self.purchase_calendar.setSelectedDate(self.purchaseDate)  # to recover the calendar
+                self.sell_calendar.setSelectedDate(self.sellDate)
 
             pass  # placeholder for future code
         except Exception as e:
@@ -235,23 +312,30 @@ class StockTradeProfitCalculator(QDialog):
         # Create and show the graph window
         self.categories = self.stock_name
         self.values = self.total_profit
-        self.graph_window = GraphWindow(self.categories, self.values)
+        self.stock_name_parameter = self.stock_name
+        self.purchase_date_parameter = self.purchaseDate
+        self.sell_date_parameter = self.sellDate
+        self.quantity = self.quantity_spinbox.value()
+        self.graph_window = GraphWindow(self.categories, self.values, self.stock_name_parameter, self.purchase_date_parameter, self.sell_date_parameter, self.quantity)
         self.graph_window.show()
 
     def get_price(self):
         # setting up dictionary of Stocks and format the date
-        data = self.make_data()
+        self.data_reader = StockDataReader()
+        data = self.data_reader.make_data()
         self.stock_name = self.stock_combobox.currentText()
-        purchaseDateTuple = self.string_date_into_tuple(self.selected_purchase_date.toString('dd-MM-yyyy'))
-        sellDateTuple = self.string_date_into_tuple(self.selected_sell_date.toString('dd-MM-yyyy'))
+        purchaseDateTuple = self.data_reader.string_date_into_tuple(self.selected_purchase_date.toString('dd-MM-yyyy'))
+        sellDateTuple = self.data_reader.string_date_into_tuple(self.selected_sell_date.toString('dd-MM-yyyy'))
 
         # Retrieve the stock price for the purchase date
         if self.stock_name in data and purchaseDateTuple in data[self.stock_name]:
             self.stock_buy_price = data[self.stock_name][purchaseDateTuple]
             self.purchase_date_status.setText("Data found")
             self.purchase_date_status.setStyleSheet("QLabel { color : green; }")
+            self.purchase_active = True
         else:
             self.stock_buy_price = 0
+            self.purchase_active = False
             self.purchase_date_status.setText("No data found")
             self.purchase_date_status.setStyleSheet("QLabel { color : red; }")
 
@@ -260,12 +344,14 @@ class StockTradeProfitCalculator(QDialog):
             self.stock_sell_price = data[self.stock_name][sellDateTuple]
             self.sell_date_status.setText("Data found")
             self.sell_date_status.setStyleSheet("QLabel { color : green; }")
+            self.sell_active = True
         else:
             self.stock_sell_price = 0
+            self.sell_active = False
             self.sell_date_status.setText("No data found")
             self.sell_date_status.setStyleSheet("QLabel { color : red; }")
 
-
+class StockDataReader():
     def make_data(self):
         '''
         This code reads the stock market CSV file and generates a dictionary structure.
