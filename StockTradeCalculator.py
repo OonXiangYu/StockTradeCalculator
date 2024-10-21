@@ -1,11 +1,13 @@
 import sys
 import csv
 
+from PyQt5.QtCore import QDateTime
 from PyQt6.QtCore import QDate
 from PyQt6.QtWidgets import QLabel, QComboBox, QCalendarWidget, QDialog, QApplication, QSpinBox, QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QMessageBox, QPushButton, QCheckBox
 from datetime import datetime
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+import matplotlib.dates as mdates
 
 # Create a simple Matplotlib canvas class
 class MatplotlibCanvas(FigureCanvas):
@@ -19,15 +21,36 @@ class MatplotlibCanvas(FigureCanvas):
         self.axes.clear()  # Clear previous plot
         self.axes.set_facecolor(bg_colour)  # Set background color
         self.axes.bar(categories, profits)
+        self.axes.set_title('Profit Bar Chart')
         self.axes.set_xlabel('Categories')
         self.axes.set_ylabel('Values')
-        self.axes.tick_params(axis='x', labelsize=6)
+        self.axes.tick_params(axis='x', labelsize=6) # Font size
         self.draw()
 
+    def plot_line_graph(self, stockName, dates, prices):
+        dates = [datetime(year, month, day) for year, month, day in dates]
+
+        self.axes.plot(dates, prices, marker='o', linestyle='-', color='b')
+        self.axes.set_title(f"Growth Line Graph per Unit of {stockName}")
+        self.axes.set_xlabel('Date')
+        self.axes.set_ylabel('Price')
+
+        # Format the x-axis to show dates nicely
+        self.axes.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
+        self.axes.xaxis.set_major_locator(mdates.DayLocator())# Set major ticks to be every day
+
+        # Rotate date labels for better readability
+        self.figure.autofmt_xdate()
+
+        self.axes.tick_params(axis='x', labelsize=4) # Font size
+
+        self.draw()
+
+
 class GraphWindow(QMainWindow):
-    def __init__(self, categories, values, stock_name_parameter, purchase_date_parameter, sell_date_parameter, quantity,bg_colour='black'):
+    def __init__(self, categories, purchase_date_parameter, sell_date_parameter, quantity,bg_colour='black'):
         super().__init__()
-        self.setWindowTitle("Bar Chart with Double Values")
+        self.setWindowTitle("Bar Chart for Comparison")
         self.setGeometry(200, 200, 600, 400)
 
         # Setting up dictionary of Stocks
@@ -35,12 +58,11 @@ class GraphWindow(QMainWindow):
         self.data = self.data_getter.make_data()
 
         # Assign variable
-        self.stock_name = stock_name_parameter
         self.purchase_date = purchase_date_parameter
         self.sell_date = sell_date_parameter
         self.amount = quantity
         self.category_profit = {}  # Dictionary to hold category and profit pairs
-        self.category_profit[self.stock_name] = self.get_price(categories, values)
+        self.category_profit[categories] = self.get_price(categories, quantity)
 
         # Layout of graph
         central_widget = QWidget(self)
@@ -50,8 +72,9 @@ class GraphWindow(QMainWindow):
 
         checkboxes_layout = QHBoxLayout()
 
+        # Add the checkbox except the stock you selected on the calculator
         for stock_name in self.data.keys():
-            if stock_name != self.stock_name:
+            if stock_name != categories:
                 checkbox = QCheckBox(stock_name, self)
                 checkboxes_layout.addWidget(checkbox)  # Add the checkbox to the layout
                 checkbox.stateChanged.connect(self.checkBox_state_changed) # Connect to event
@@ -94,6 +117,41 @@ class GraphWindow(QMainWindow):
 
         # Call the plot_bar_chart method in the Canvas class
         self.canvas.plot_bar_chart(categories, profits, bg_colour='black')
+
+class LineGraphWindow(QMainWindow):
+    def __init__(self, stock_name_parameter, purchase_date_parameter, sell_date_parameter):
+        super().__init__()
+        self.setWindowTitle("Line Graph for Stock Growth")
+        self.setGeometry(100, 100, 600, 400)
+
+        # Setting up dictionary of Stocks
+        self.data_getter = StockDataReader()
+        self.data = self.data_getter.make_data()
+
+        # Assign value
+        dates = []
+        prices = []
+
+        # Create a QWidget for the central widget
+        widget = QWidget()
+        self.setCentralWidget(widget)
+
+        # Set up the layout
+        layout = QVBoxLayout()
+        widget.setLayout(layout)
+
+        self.canvas = MatplotlibCanvas(self)
+        layout.addWidget(self.canvas)
+
+        # Filter the stock data between the given date range
+        price_per_unit = {date: price for date, price in self.data[stock_name_parameter].items() if purchase_date_parameter <= date <= sell_date_parameter}
+
+        for date, price in price_per_unit.items():
+            dates.append(date)
+            prices.append(price)
+
+        # Plot the data
+        self.canvas.plot_line_graph(stock_name_parameter, dates, prices)
 
 
 class StockTradeProfitCalculator(QDialog):
@@ -268,6 +326,9 @@ class StockTradeProfitCalculator(QDialog):
         This requires substantial development.
         Updates the UI when control values are changed; should also be called when the app initializes.
         '''
+        # Setting up data class
+        self.tuple_convertor = StockDataReader()
+
         try:
             if self.quantity_spinbox.value() == 0:
                 self.error_msg = "Stock quantity must greater than 0"
@@ -286,6 +347,9 @@ class StockTradeProfitCalculator(QDialog):
                 self.stock_sell_total.setText(f"Sell Total :${self.sell_total_price:.2f}")  # render label of sell total
                 self.stock_profit_total.setText(f"Profit :${self.total_profit:.2f}") # render label of total profit
 
+                purchaseDateTuple = self.tuple_convertor.string_date_into_tuple(self.purchaseDate.toString('dd-MM-yyyy'))
+                sellDateTuple = self.tuple_convertor.string_date_into_tuple(self.sellDate.toString('dd-MM-yyyy'))
+                self.show_line_graph(purchaseDateTuple, sellDateTuple)
                 self.show_graph()
 
             else:
@@ -310,14 +374,14 @@ class StockTradeProfitCalculator(QDialog):
 
     def show_graph(self):
         # Create and show the graph window
-        self.categories = self.stock_name
-        self.values = self.total_profit
-        self.stock_name_parameter = self.stock_name
-        self.purchase_date_parameter = self.purchaseDate
-        self.sell_date_parameter = self.sellDate
         self.quantity = self.quantity_spinbox.value()
-        self.graph_window = GraphWindow(self.categories, self.values, self.stock_name_parameter, self.purchase_date_parameter, self.sell_date_parameter, self.quantity)
+        self.graph_window = GraphWindow(self.stock_name, self.purchaseDate, self.sellDate, self.quantity)
         self.graph_window.show()
+
+    def show_line_graph(self, purchase_date, sell_date):
+        # Create and show the line graph
+        self.line_graph_window = LineGraphWindow(self.stock_name, purchase_date, sell_date)
+        self.line_graph_window.show()
 
     def get_price(self):
         # setting up dictionary of Stocks and format the date
