@@ -1,7 +1,6 @@
 import sys
 import csv
 
-from PyQt5.QtCore import QDateTime
 from PyQt6.QtCore import QDate
 from PyQt6.QtWidgets import QLabel, QComboBox, QCalendarWidget, QDialog, QApplication, QSpinBox, QVBoxLayout, QHBoxLayout, QMainWindow, QWidget, QMessageBox, QPushButton, QCheckBox
 from datetime import datetime
@@ -30,8 +29,8 @@ class MatplotlibCanvas(FigureCanvas):
     def plot_line_graph(self, stockName, dates, prices):
         dates = [datetime(year, month, day) for year, month, day in dates]
 
-        self.axes.plot(dates, prices, marker='o', linestyle='-', color='b')
-        self.axes.set_title(f"Growth Line Graph per Unit of {stockName}")
+        self.axes.plot(dates, prices, linestyle='-', color='b')
+        self.axes.set_title(f"Growth Line Graph of {stockName} per Unit")
         self.axes.set_xlabel('Date')
         self.axes.set_ylabel('Price')
 
@@ -42,7 +41,7 @@ class MatplotlibCanvas(FigureCanvas):
         # Rotate date labels for better readability
         self.figure.autofmt_xdate()
 
-        self.axes.tick_params(axis='x', labelsize=4) # Font size
+        self.axes.tick_params(axis='x', labelsize=6) # Font size
 
         self.draw()
 
@@ -178,6 +177,7 @@ class StockTradeProfitCalculator(QDialog):
         self.data_reader = StockDataReader()
         self.data = self.data_reader.make_data()
 
+        # TODO: initialize the layout - 6 rows to start
         # Initialize the layout
         layout = QVBoxLayout(self)
 
@@ -203,19 +203,17 @@ class StockTradeProfitCalculator(QDialog):
         self.stock_name = self.stock_combobox.currentText()
 
         # TODO: Define buyCalendarDefaultDate
-        self.purchaseDate = QDate.currentDate().addDays(-14)  # purchase: two weeks before most recent
-        self.sellDate = QDate.currentDate()
-
         # Check if current stock exists, if not, handle it gracefully
-        '''
         if self.stock_name in self.data:
-            self.sellDefaultDate = sorted(self.data[self.stock_name].keys())[0]
-            #self.sellDate = QDate(year, month, day)
-            print(f'{self.sellDefaultDate}')
+            self.sellDefaultDate = list(self.data[self.stock_name].keys())[0]
+            self.purchaseDefaultDate = list(self.data[self.stock_name].keys())[1]
+            self.sellDate = QDate(self.sellDefaultDate[0],self.sellDefaultDate[1],self.sellDefaultDate[2]) # Tuple convert to datetime obj
+            self.purchaseDate = QDate(self.purchaseDefaultDate[0], self.purchaseDefaultDate[1],self.purchaseDefaultDate[2])  # Tuple convert to datetime obj
+            print(f'{self.sellDate}, {self.purchaseDate}')
         else:
             print("Current stock not found in the dataset. Available stocks:", self.data.keys())
-            self.sellDefaultDate = QDate.currentDate()  # Default to the current date
-        '''
+            self.sellDate = QDate.currentDate()  # Default to the current date
+            self.purchaseDate = QDate.currentDate()
 
         # TODO: create QLabel for Quantity selection
         # Quantity selection label
@@ -225,8 +223,8 @@ class StockTradeProfitCalculator(QDialog):
         # TODO: create QSpinBox to select Stock quantity purchased
         #Quantity select SpinBox
         self.quantity_spinbox = QSpinBox()
-        self.quantity_spinbox.setMinimum(0)
-        self.quantity_spinbox.setMaximum(100)
+        self.quantity_spinbox.setMinimum(1)
+        self.quantity_spinbox.setMaximum(10000)
         layout.addWidget(self.quantity_spinbox)
 
         #  status of data browse
@@ -295,8 +293,6 @@ class StockTradeProfitCalculator(QDialog):
         self.setWindowTitle('Stock Trade Profit Calculator')
         self.show()
 
-        # TODO: initialize the layout - 6 rows to start
-
     def updateCalendarUi(self):
         # TODO: get selected dates from calendars
         self.selected_purchase_date = self.purchase_calendar.selectedDate()
@@ -330,11 +326,11 @@ class StockTradeProfitCalculator(QDialog):
         self.tuple_convertor = StockDataReader()
 
         try:
-            if self.quantity_spinbox.value() == 0:
+            if self.quantity_spinbox.value() <= 0: # Validation for quantity
                 self.error_msg = "Stock quantity must greater than 0"
                 self.show_error_message()
 
-            elif self.purchase_active and self.sell_active:
+            elif self.purchase_active and self.sell_active: # Both data found
                 self.get_price()
 
                 # TODO: perform necessary calculations to calculate totals
