@@ -8,7 +8,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.dates as mdates
 
-# Create a simple Matplotlib canvas class
+# Matplotlib canvas class
 class MatplotlibCanvas(FigureCanvas):
     def __init__(self, parent=None):
         fig = Figure()
@@ -16,7 +16,7 @@ class MatplotlibCanvas(FigureCanvas):
         super().__init__(fig)
         self.setParent(parent)
 
-    def plot_bar_chart(self, categories, profits, bg_colour='black'):
+    def plot_bar_chart(self, categories, profits, bg_colour='black'): # Method for bar chart
         self.axes.clear()  # Clear previous plot
         self.axes.set_facecolor(bg_colour)  # Set background color
         self.axes.bar(categories, profits)
@@ -26,10 +26,10 @@ class MatplotlibCanvas(FigureCanvas):
         self.axes.tick_params(axis='x', labelsize=6) # Font size
         for i, value in enumerate(profits):
             ans = round(value, 2)
-            self.axes.text(i, ans / 2, f'{ans}', ha='center', va='center', color='white', fontweight='bold')
+            self.axes.text(i, ans / 2, f'{ans}', ha='center', va='center', color='white', fontweight='bold') # Let the text place on the middle of bar
         self.draw()
 
-    def plot_line_graph(self, stockName, dates, prices):
+    def plot_line_graph(self, stockName, dates, prices): # Method for line graph
         dates = [datetime(year, month, day) for year, month, day in dates]
 
         self.axes.plot(dates, prices, linestyle='-', color='b')
@@ -40,12 +40,11 @@ class MatplotlibCanvas(FigureCanvas):
         if len(dates) > 10:  # Show only the first and last dates
             self.axes.set_xticks([dates[0], dates[-1]])
             self.axes.set_xticklabels([dates[0].strftime('%Y-%m-%d'), dates[-1].strftime('%Y-%m-%d')])
-        else: # If 10 or fewer dates, show all ticks and format them
-            self.axes.xaxis.set_major_locator(mdates.DayLocator())  # Major ticks every day
+        else: # If dates <= 10, show all and format them
+            self.axes.xaxis.set_major_locator(mdates.DayLocator())
             self.axes.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 
-        # Rotate date labels for better readability
-        self.figure.autofmt_xdate()
+        self.figure.autofmt_xdate() # Make the date more ez to read
 
         self.axes.tick_params(axis='x', labelsize=6) # Font size
 
@@ -66,14 +65,14 @@ class GraphWindow(QMainWindow):
         self.purchase_date = purchase_date_parameter
         self.sell_date = sell_date_parameter
         self.amount = quantity
-        self.category_profit = {}  # Dictionary to hold category and profit pairs
+        self.category_profit = {}  # Dictionary to hold category and profit
         self.category_profit[categories] = self.get_price(categories, quantity)
 
         # Layout of graph
-        central_widget = QWidget(self)
-        self.setCentralWidget(central_widget)
+        center = QWidget(self)
+        self.setCentralWidget(center)
 
-        layout = QVBoxLayout(central_widget)
+        layout = QVBoxLayout(center)
 
         checkboxes_layout = QHBoxLayout()
 
@@ -89,8 +88,7 @@ class GraphWindow(QMainWindow):
         self.canvas = MatplotlibCanvas(self)
         layout.addWidget(self.canvas)
 
-        # Plot the bar chart
-        self.update_plot()
+        self.update_plot() # Plot the bar chart
 
     def checkBox_state_changed(self):
         sender = self.sender()  # Get the checkbox that triggered the event
@@ -99,8 +97,7 @@ class GraphWindow(QMainWindow):
         if sender.isChecked():
             self.category_profit[category] = self.get_price(category, self.amount)
             self.update_plot() # Update chart
-        else:
-            # Remove the category if the checkbox is unchecked
+        else: # Remove the category if the checkbox is unchecked
             if category in self.category_profit:
                 del self.category_profit[category]  # Remove the category and its profit
                 self.update_plot() # Update chart
@@ -137,18 +134,16 @@ class LineGraphWindow(QMainWindow):
         dates = []
         prices = []
 
-        # Create a QWidget for the central widget
         widget = QWidget()
         self.setCentralWidget(widget)
 
-        # Set up the layout
         layout = QVBoxLayout()
         widget.setLayout(layout)
 
         self.canvas = MatplotlibCanvas(self)
         layout.addWidget(self.canvas)
 
-        # Filter the stock data between the given date range
+        # Filter the data in between the range
         price_per_unit = {date: price for date, price in self.data[stock_name_parameter].items() if purchase_date_parameter <= date <= sell_date_parameter}
 
         for date, price in price_per_unit.items():
@@ -157,7 +152,6 @@ class LineGraphWindow(QMainWindow):
 
         # Plot the data
         self.canvas.plot_line_graph(stock_name_parameter, dates, prices)
-
 
 class StockTradeProfitCalculator(QDialog):
     '''
@@ -364,8 +358,7 @@ class StockTradeProfitCalculator(QDialog):
         except Exception as e:
             print(f"Error in updateUi: {e}")
 
-    def show_error_message(self):
-        # Pop up an error message
+    def show_error_message(self): # Pop up an error message
         error_dialog = QMessageBox()
         error_dialog.setIcon(QMessageBox.Icon.Critical)
         error_dialog.setText("An error occurred!")
@@ -374,14 +367,12 @@ class StockTradeProfitCalculator(QDialog):
         error_dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
         error_dialog.exec()
 
-    def show_graph(self):
-        # Create and show the graph window
+    def show_graph(self): # Create and show the graph window
         self.quantity = self.quantity_spinbox.value()
         self.graph_window = GraphWindow(self.stock_name, self.purchaseDate, self.sellDate, self.quantity)
         self.graph_window.show()
 
-    def show_line_graph(self, purchase_date, sell_date):
-        # Create and show the line graph
+    def show_line_graph(self, purchase_date, sell_date): # Create and show the line graph
         self.line_graph_window = LineGraphWindow(self.stock_name, purchase_date, sell_date)
         self.line_graph_window.show()
 
