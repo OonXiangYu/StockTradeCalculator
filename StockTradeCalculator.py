@@ -359,13 +359,13 @@ class StockTradeProfitCalculator(QDialog):
             print(f"Error in updateUi: {e}")
 
     def show_error_message(self): # Pop up an error message
-        error_dialog = QMessageBox()
-        error_dialog.setIcon(QMessageBox.Icon.Critical)
-        error_dialog.setText("An error occurred!")
-        error_dialog.setInformativeText(self.error_msg)
-        error_dialog.setWindowTitle("Error")
-        error_dialog.setStandardButtons(QMessageBox.StandardButton.Ok)
-        error_dialog.exec()
+        error = QMessageBox()
+        error.setIcon(QMessageBox.Icon.Critical)
+        error.setText("An error occurred!")
+        error.setInformativeText(self.error_msg)
+        error.setWindowTitle("Error")
+        error.setStandardButtons(QMessageBox.StandardButton.Ok)
+        error.exec()
 
     def show_graph(self): # Create and show the graph window
         self.quantity = self.quantity_spinbox.value()
