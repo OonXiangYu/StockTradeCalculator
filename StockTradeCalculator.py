@@ -24,6 +24,9 @@ class MatplotlibCanvas(FigureCanvas):
         self.axes.set_xlabel('Categories')
         self.axes.set_ylabel('Values')
         self.axes.tick_params(axis='x', labelsize=6) # Font size
+        for i, value in enumerate(profits):
+            ans = round(value, 2)
+            self.axes.text(i, ans / 2, f'{ans}', ha='center', va='center', color='white', fontweight='bold')
         self.draw()
 
     def plot_line_graph(self, stockName, dates, prices):
@@ -34,9 +37,12 @@ class MatplotlibCanvas(FigureCanvas):
         self.axes.set_xlabel('Date')
         self.axes.set_ylabel('Price')
 
-        # Format the x-axis to show dates nicely
-        self.axes.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
-        self.axes.xaxis.set_major_locator(mdates.DayLocator())# Set major ticks to be every day
+        if len(dates) > 10:  # Show only the first and last dates
+            self.axes.set_xticks([dates[0], dates[-1]])
+            self.axes.set_xticklabels([dates[0].strftime('%Y-%m-%d'), dates[-1].strftime('%Y-%m-%d')])
+        else: # If 10 or fewer dates, show all ticks and format them
+            self.axes.xaxis.set_major_locator(mdates.DayLocator())  # Major ticks every day
+            self.axes.xaxis.set_major_formatter(mdates.DateFormatter('%Y-%m-%d'))
 
         # Rotate date labels for better readability
         self.figure.autofmt_xdate()
@@ -419,7 +425,7 @@ class StockDataReader():
         '''
         data = {}
         try:
-            with open('data/Transformed_Stock_Market_Dataset.csv', mode='r') as file:
+            with open('Transformed_Stock_Market_Dataset.csv', mode='r') as file:
                 reader = csv.DictReader(file)
                 stock_names = reader.fieldnames[1:]  # All columns except 'Date' are stock names
 
